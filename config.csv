@@ -1,6 +1,6 @@
-package,org.apache.commons:commons-lang3
+package,org.apache.commons:commons-text
 repository,https://repo.maven.apache.org/maven2
 test_mode,false
-version,3.14.0
+version,1.12.0
 output_file,graph.svg
 max_depth,3

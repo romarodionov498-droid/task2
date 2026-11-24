@@ -2,6 +2,9 @@ import csv
 import re
 from pathlib import Path
 from urllib.parse import urlparse
+from xml.etree.ElementTree import ParseError
+
+from src.maven import get_dependencies
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.csv"
@@ -73,22 +76,37 @@ def validate_config(config):
         raise ValueError("Некорректное имя SVG-файла")
 
     if not config["max_depth"].isdigit():
-        raise ValueError("Глубина должна быть целым неотрицательным числом")
+        raise ValueError(
+            "Глубина должна быть целым неотрицательным числом"
+        )
 
     if int(config["max_depth"]) < MIN_DEPTH:
         raise ValueError("Некорректная глубина")
 
 
 def main():
-    """Запускает чтение, проверку и вывод конфигурации."""
+    """Получает и выводит прямые зависимости пакета."""
     try:
         config = read_config(CONFIG_PATH)
         validate_config(config)
 
-        for key in REQUIRED_KEYS:
-            print(f"{key}: {config[key]}")
+        dependencies = get_dependencies(
+            config["repository"],
+            config["package"],
+            config["version"],
+        )
 
-    except (OSError, ValueError) as error:
+        print(f"Пакет: {config['package']}")
+        print(f"Версия: {config['version']}")
+        print("Прямые зависимости:")
+
+        for package, version, scope in dependencies:
+            print(f"{package} — {version} ({scope})")
+
+        if not dependencies:
+            print("Зависимости отсутствуют")
+
+    except (OSError, ValueError, ParseError) as error:
         print(f"Ошибка: {error}")
         return 1
 
