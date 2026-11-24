@@ -4,7 +4,12 @@ from pathlib import Path
 from urllib.parse import urlparse
 from xml.etree.ElementTree import ParseError
 
-from src.maven import get_dependencies
+from src.graph import (
+    build_graph,
+    get_maven_dependencies,
+    get_test_dependencies,
+    read_test_repository,
+)
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.csv"
@@ -19,6 +24,7 @@ REQUIRED_KEYS = (
 )
 
 MIN_DEPTH = 0
+CSV_COLUMNS = 2
 
 
 def read_config(path):
@@ -27,7 +33,7 @@ def read_config(path):
 
     with open(path, encoding="utf-8", newline="") as file:
         for row in csv.reader(file):
-            if len(row) != 2:
+            if len(row) != CSV_COLUMNS:
                 raise ValueError("Некорректный формат CSV")
 
             key, value = row
@@ -84,29 +90,44 @@ def validate_config(config):
         raise ValueError("Некорректная глубина")
 
 
+def create_graph(config):
+    """Строит граф для выбранного режима работы."""
+    package = config["package"]
+    max_depth = int(config["max_depth"])
+
+    if config["test_mode"] == "true":
+        repository = read_test_repository(config["repository"])
+
+        def get_children(node):
+            """Получает зависимости тестового пакета."""
+            return get_test_dependencies(repository, node)
+
+    else:
+        repository = config["repository"]
+        package = f"{package}:{config['version']}"
+
+        def get_children(node):
+            """Получает зависимости Maven-пакета."""
+            return get_maven_dependencies(repository, node)
+
+    return build_graph(package, get_children, max_depth)
+
+
 def main():
-    """Получает и выводит прямые зависимости пакета."""
+    """Считывает конфигурацию и строит граф зависимостей."""
     try:
         config = read_config(CONFIG_PATH)
         validate_config(config)
 
-        dependencies = get_dependencies(
-            config["repository"],
-            config["package"],
-            config["version"],
-        )
+        graph = create_graph(config)
 
-        print(f"Пакет: {config['package']}")
-        print(f"Версия: {config['version']}")
-        print("Прямые зависимости:")
+        print("Граф зависимостей:")
 
-        for package, version, scope in dependencies:
-            print(f"{package} — {version} ({scope})")
+        for package, dependencies in graph.items():
+            children = ", ".join(dependencies)
+            print(f"{package}: [{children}]")
 
-        if not dependencies:
-            print("Зависимости отсутствуют")
-
-    except (OSError, ValueError, ParseError) as error:
+    except (OSError, ValueError, ParseError, RecursionError) as error:
         print(f"Ошибка: {error}")
         return 1
 
