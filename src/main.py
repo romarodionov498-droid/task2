@@ -1,6 +1,7 @@
 import csv
 import re
 from pathlib import Path
+from subprocess import CalledProcessError
 from urllib.parse import urlparse
 from xml.etree.ElementTree import ParseError
 
@@ -10,7 +11,7 @@ from src.graph import (
     get_test_dependencies,
     read_test_repository,
 )
-from src.loading import get_loading_order
+from src.visualization import generate_dot, save_svg
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.csv"
@@ -115,21 +116,25 @@ def create_graph(config):
 
 
 def main():
-    """Определяет и выводит порядок загрузки зависимостей."""
+    """Строит граф зависимостей и сохраняет изображение."""
     try:
         config = read_config(CONFIG_PATH)
         validate_config(config)
 
         graph = create_graph(config)
-        package = next(iter(graph))
-        order = get_loading_order(graph, package)
+        dot_text = generate_dot(graph)
 
-        print("Порядок загрузки зависимостей:")
+        save_svg(dot_text, config["output_file"])
 
-        for number, dependency in enumerate(order, start=1):
-            print(f"{number}. {dependency}")
+        print(f"Граф сохранен: {config['output_file']}")
 
-    except (OSError, ValueError, ParseError, RecursionError) as error:
+    except (
+        OSError,
+        ValueError,
+        ParseError,
+        RecursionError,
+        CalledProcessError,
+    ) as error:
         print(f"Ошибка: {error}")
         return 1
 
