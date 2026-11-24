@@ -10,6 +10,7 @@ from src.graph import (
     get_test_dependencies,
     read_test_repository,
 )
+from src.loading import get_loading_order
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.csv"
@@ -114,18 +115,19 @@ def create_graph(config):
 
 
 def main():
-    """Считывает конфигурацию и строит граф зависимостей."""
+    """Определяет и выводит порядок загрузки зависимостей."""
     try:
         config = read_config(CONFIG_PATH)
         validate_config(config)
 
         graph = create_graph(config)
+        package = next(iter(graph))
+        order = get_loading_order(graph, package)
 
-        print("Граф зависимостей:")
+        print("Порядок загрузки зависимостей:")
 
-        for package, dependencies in graph.items():
-            children = ", ".join(dependencies)
-            print(f"{package}: [{children}]")
+        for number, dependency in enumerate(order, start=1):
+            print(f"{number}. {dependency}")
 
     except (OSError, ValueError, ParseError, RecursionError) as error:
         print(f"Ошибка: {error}")
