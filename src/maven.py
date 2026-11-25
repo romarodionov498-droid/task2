@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as et
 from urllib.request import urlopen
 
 
@@ -40,7 +40,7 @@ def resolve_version(version, properties):
 
 def parse_dependencies(pom):
     """Извлекает прямые зависимости из POM-файла."""
-    root = ET.fromstring(pom)
+    root = et.fromstring(pom)
     properties = read_properties(root)
     dependencies = []
 
